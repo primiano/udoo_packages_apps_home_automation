@@ -1,0 +1,19 @@
+{
+  "name": "home_automation",
+  "version": "0.0.1",
+  "description": "Home Automation",
+  "authors": [
+    "Primiano Tucci - www.primianotucci.com"
+  ],
+  "license": "BSD",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#~0.5.2"
+  }
+}
