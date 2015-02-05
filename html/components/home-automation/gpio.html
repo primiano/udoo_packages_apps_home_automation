@@ -1,0 +1,34 @@
+<link rel="import" href="../paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../core-ajax/core-ajax.html">
+
+<polymer-element name="home-automation-gpio" attributes="channel label value">
+
+  <template>
+    <style>
+      :host {
+        background-color: rgb(255, 255, 255);
+      }
+    </style>
+
+    <paper-checkbox class="gpio" id="io0" checked="{{value == '1'}}" on-tap="{{gpio_toggle}}" label="{{label}}"></paper-checkbox>
+
+    <!-- For the GET requests -->
+    <core-ajax auto url="{{ajaxurl}}/io/{{channel}}" handleAs="text" response="{{value}}" loading="{{loading}}"></core-ajax>
+
+    <!-- For POST updates -->
+    <core-ajax auto="{{!loading}}" url="{{ajaxurl}}/io/{{channel}}" method="POST" handleAs="text" body="{{value}}"></core-ajax>
+
+  </template>
+
+  <script>
+    Polymer({
+      ajaxurl: "http://" + location.host,
+      value: "0",
+      loading: true,
+      gpio_toggle: function(_, __, ionode) {
+        this.value = ionode.checked ? '0' : '1';
+      },
+    });
+  </script>
+
+</polymer-element>

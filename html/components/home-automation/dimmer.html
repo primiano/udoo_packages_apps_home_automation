@@ -1,0 +1,41 @@
+<link rel="import" href="../paper-slider/paper-slider.html">
+<link rel="import" href="../core-ajax/core-ajax.html">
+
+<polymer-element name="home-automation-dimmer" attributes="value channel color">
+
+  <template>
+    <style>
+      :host {
+        width: 100%;
+        height: 3em;
+      }
+
+      paper-slider {
+        width: 100%;
+      }
+
+      #dimmer::shadow #sliderKnobInner, #dimmer::shadow #sliderBar::shadow #activeProgress {
+        background-color: {{color}};
+      }
+    </style>
+
+    <paper-slider value="{{value}}" max="255" id="dimmer"></paper-slider>
+
+    <!-- For the GET requests -->
+    <core-ajax auto url="{{ajaxurl}}/dimmer/{{channel}}" handleAs="text" response="{{value}}" loading="{{loading}}"></core-ajax>
+
+    <!-- For POST updates -->
+    <core-ajax auto="{{!loading}}" url="{{ajaxurl}}/dimmer/{{channel}}" method="POST" handleAs="text" body="{{value}}"></core-ajax>
+
+  </template>
+
+  <script>
+    Polymer({
+      ajaxurl: "http://" + location.host,
+      value: 0,
+      color: "blue",
+      loading: true,
+    });
+  </script>
+
+</polymer-element>

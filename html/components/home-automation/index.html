@@ -1,11 +1,10 @@
 <link rel="import" href="../core-icon-button/core-icon-button.html">
 <link rel="import" href="../core-toolbar/core-toolbar.html">
-<link rel="import" href="../paper-slider/paper-slider.html">
-<link rel="import" href="../paper-checkbox/paper-checkbox.html">
-<link rel="import" href="../core-ajax/core-ajax.html">
+<link rel="import" href="dimmer.html">
+<link rel="import" href="gpio.html">
 
 
-<polymer-element name="home-automation" attributes="dimmer0 dimmer1 dimmer2 dimmer3 io0 io1 io2 ajaxurl">
+<polymer-element name="home-automation">
 
   <template>
     <style>
@@ -17,6 +16,7 @@
         font-size: 1.5em;
         font-family: sans-serif;
       }
+
       h1 {
         font-size: 0.5em;
         font-weight: normal;
@@ -24,6 +24,7 @@
         center; color: #999;
         margin: 2em 0 0 0;
       }
+
       #core_toolbar {
         right: 0px;
         left: 0px;
@@ -32,22 +33,7 @@
         top: 0px;
         background-color: rgb(79, 125, 201);
       }
-      .dimmer {
-        width: 100%;
-        height: 3em;
-      }
-      #dimmer0::shadow #sliderKnobInner, #dimmer0::shadow #sliderBar::shadow #activeProgress {
-        background-color: rgb(255, 215, 0);
-      }
-      #dimmer1::shadow #sliderKnobInner, #dimmer1::shadow #sliderBar::shadow #activeProgress {
-        background-color: green;
-      }
-      #dimmer2::shadow #sliderKnobInner, #dimmer2::shadow #sliderBar::shadow #activeProgress {
-        background-color: red;
-      }
-      #dimmer3::shadow #sliderKnobInner, #dimmer3::shadow #sliderBar::shadow #activeProgress {
-        background-color: navy;
-      }
+
       .card {
         width: auto;
         overflow: visible;
@@ -58,7 +44,8 @@
         text-align: center;
         background-color: rgb(255, 255, 255);
       }
-      .gpio {
+
+      home-automation-gpio {
         width: 32%;
         display: inline-block;
         background-color: rgb(255, 255, 255);
@@ -72,66 +59,31 @@
     </core-toolbar>
 
     <core-card id="dimmers" class="card" layout vertical>
-      <paper-slider value="{{dimmer0}}" max="255" id="dimmer0" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer1}}" max="255" id="dimmer1" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer2}}" max="255" id="dimmer2" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer3}}" max="255" id="dimmer3" class="dimmer"></paper-slider>
+      <home-automation-dimmer channel="0" id="dimmer0" color="gold" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="1" id="dimmer1" color="green" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="2" id="dimmer2" color="red" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="3" id="dimmer3" color="navy" value="0"></home-automation-dimmer>
     </core-card>
 
     <core-card id="gpios" class="card" layout horizontal>
-      <paper-checkbox class="gpio" id="io0" checked="{{io0 == '1'}}" on-tap="{{gpio_toggle}}" label="Ampli"></paper-checkbox>
-      <paper-checkbox class="gpio" id="io1" checked="{{io1 == '1'}}" on-tap="{{gpio_toggle}}" label="I/O 1"></paper-checkbox>
-      <paper-checkbox class="gpio" id="io2" checked="{{io2 == '1'}}" on-tap="{{gpio_toggle}}" label="I/O 2"></paper-checkbox>
+      <home-automation-gpio channel="0" id="io0" label="Ampli" value="0"></home-automation-gpio>
+      <home-automation-gpio channel="1" id="io1" label="Aux 1" value="0"></home-automation-gpio>
+      <home-automation-gpio channel="2" id="io2" label="Aux 2" value="0"></home-automation-gpio>
     </core-card>
 
-    <!-- Dimmer GET requests -->
-    <core-ajax auto url="{{ajaxurl}}/pwm/0" handleAs="text" response="{{dimmer0}}" loading="{{dimmer0_loading}}"></core-ajax>
-    <core-ajax auto url="{{ajaxurl}}/pwm/1" handleAs="text" response="{{dimmer1}}" loading="{{dimmer1_loading}}"></core-ajax>
-    <core-ajax auto url="{{ajaxurl}}/pwm/2" handleAs="text" response="{{dimmer2}}" loading="{{dimmer2_loading}}"></core-ajax>
-    <core-ajax auto url="{{ajaxurl}}/pwm/3" handleAs="text" response="{{dimmer3}}" loading="{{dimmer3_loading}}"></core-ajax>
-
-    <!-- Dimmer POST updates -->
-    <core-ajax auto="{{!dimmer0_loading}}" url="{{ajaxurl}}/pwm/0" method="POST" handleAs="text" body="{{dimmer0}}"></core-ajax>
-    <core-ajax auto="{{!dimmer1_loading}}" url="{{ajaxurl}}/pwm/1" method="POST" handleAs="text" body="{{dimmer1}}"></core-ajax>
-    <core-ajax auto="{{!dimmer2_loading}}" url="{{ajaxurl}}/pwm/2" method="POST" handleAs="text" body="{{dimmer2}}"></core-ajax>
-    <core-ajax auto="{{!dimmer3_loading}}" url="{{ajaxurl}}/pwm/3" method="POST" handleAs="text" body="{{dimmer3}}"></core-ajax>
-
-    <!-- GPIO GET requests -->
-    <core-ajax auto url="{{ajaxurl}}/io/0" handleAs="text" response="{{io0}}" loading="{{io0_loading}}"></core-ajax>
-    <core-ajax auto url="{{ajaxurl}}/io/1" handleAs="text" response="{{io1}}" loading="{{io1_loading}}"></core-ajax>
-    <core-ajax auto url="{{ajaxurl}}/io/2" handleAs="text" response="{{io2}}" loading="{{io2_loading}}"></core-ajax>
-
-    <!-- GPIO POST updates -->
-    <core-ajax auto="{{!io0_loading}}" url="{{ajaxurl}}/io/0" method="POST" handleAs="text" body="{{io0}}"></core-ajax>
-    <core-ajax auto="{{!io1_loading}}" url="{{ajaxurl}}/io/1" method="POST" handleAs="text" body="{{io1}}"></core-ajax>
-    <core-ajax auto="{{!io2_loading}}" url="{{ajaxurl}}/io/2" method="POST" handleAs="text" body="{{io2}}"></core-ajax>
     <a href="https://www.primianotucci.com/"><h1>Primiano Tucci - www.primianotucci.com</h1></a>
   </template>
 
   <script>
     Polymer({
-      ajaxurl: "http://" + location.host,
-      dimmer0: "0",
-      dimmer1: "0",
-      dimmer2: "0",
-      dimmer3: "0",
-      io0: "0",
-      io1: "0",
-      io2: "0",
-      dimmer0_loading: true,
-      dimmer1_loading: true,
-      dimmer2_loading: true,
-      dimmer3_loading: true,
-      io0_loading: true,
-      io1_loading: true,
-      io2_loading: true,
-      req: false,
-      gpio_toggle: function(_, __, ionode) {
-        this[ionode.id] = ionode.checked ? '0' : '1';
-      },
       reset_all: function() {
-        this.io0 = this.io1 = this.io2 = "0";
-        this.dimmer0 = this.dimmer1 = this.dimmer2 = this.dimmer3 = "0";
+        var dimmers = this.shadowRoot.getElementsByTagName('home-automation-dimmer');
+        for (var i=0; i < dimmers.length; ++i)
+          dimmers[i].value = "0";
+
+        var gpios = this.shadowRoot.getElementsByTagName('home-automation-gpio');
+        for (var i=0; i < gpios.length; ++i)
+          gpios[i].value = "0";
       }
     });
   </script>

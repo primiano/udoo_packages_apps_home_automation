@@ -1,12 +1,4 @@
-<!--
-    @license
-    Copyright (c) 2014 The Polymer Project Authors. All rights reserved.
-    This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
-    The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
-    The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
-    Code distributed by Google as part of the polymer project is also
-    subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
---><!DOCTYPE html><html><head>
+<!DOCTYPE html><html><head>
   <title>Home Automation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="mobile-web-app-capable" content="yes">
@@ -18613,21 +18605,16 @@ html /deep/ core-icon {
 
 
 
-  <style>
 
+
+
+
+
+  <style>
     body, html {
       margin: 0;
       height: 100%;
     }
-
-    design-gist-element-preview {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-    }
-
   </style>
 
 </head>
@@ -21686,6 +21673,513 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 </script>
 </polymer-element>
 
+<polymer-element name="core-xhr" hidden="" assetpath="html/components/core-ajax/">
+
+  <script>
+
+    Polymer('core-xhr', {
+
+      /**
+       * Sends a HTTP request to the server and returns the XHR object.
+       *
+       * @method request
+       * @param {Object} inOptions
+       *    @param {String} inOptions.url The url to which the request is sent.
+       *    @param {String} inOptions.method The HTTP method to use, default is GET.
+       *    @param {boolean} inOptions.sync By default, all requests are sent asynchronously. To send synchronous requests, set to true.
+       *    @param {Object} inOptions.params Data to be sent to the server.
+       *    @param {Object} inOptions.body The content for the request body for POST method.
+       *    @param {Object} inOptions.headers HTTP request headers.
+       *    @param {String} inOptions.responseType The response type. Default is 'text'.
+       *    @param {boolean} inOptions.withCredentials Whether or not to send credentials on the request. Default is false.
+       *    @param {Object} inOptions.callback Called when request is completed.
+       * @returns {Object} XHR object.
+       */
+      request: function(options) {
+        var xhr = new XMLHttpRequest();
+        var url = options.url;
+        var method = options.method || 'GET';
+        var async = !options.sync;
+        //
+        var params = this.toQueryString(options.params);
+        if (params && method == 'GET') {
+          url += (url.indexOf('?') > 0 ? '&' : '?') + params;
+        }
+        var xhrParams = this.isBodyMethod(method) ? (options.body || params) : null;
+        //
+        xhr.open(method, url, async);
+        if (options.responseType) {
+          xhr.responseType = options.responseType;
+        }
+        if (options.withCredentials) {
+          xhr.withCredentials = true;
+        }
+        this.makeReadyStateHandler(xhr, options.callback);
+        this.setRequestHeaders(xhr, options.headers);
+        xhr.send(xhrParams);
+        if (!async) {
+          xhr.onreadystatechange(xhr);
+        }
+        return xhr;
+      },
+    
+      toQueryString: function(params) {
+        var r = [];
+        for (var n in params) {
+          var v = params[n];
+          n = encodeURIComponent(n);
+          r.push(v == null ? n : (n + '=' + encodeURIComponent(v)));
+        }
+        return r.join('&');
+      },
+
+      isBodyMethod: function(method) {
+        return this.bodyMethods[(method || '').toUpperCase()];
+      },
+      
+      bodyMethods: {
+        POST: 1,
+        PUT: 1,
+        PATCH: 1,
+        DELETE: 1
+      },
+
+      makeReadyStateHandler: function(xhr, callback) {
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState == 4) {
+            callback && callback.call(null, xhr.response, xhr);
+          }
+        };
+      },
+
+      setRequestHeaders: function(xhr, headers) {
+        if (headers) {
+          for (var name in headers) {
+            xhr.setRequestHeader(name, headers[name]);
+          }
+        }
+      }
+
+    });
+
+  </script>
+  
+</polymer-element>
+<polymer-element name="core-ajax" hidden="" attributes="url handleAs auto params response error method headers body contentType withCredentials progress loading" assetpath="html/components/core-ajax/">
+<script>
+
+  Polymer('core-ajax', {
+    /**
+     * Fired when a response is received.
+     *
+     * @event core-response
+     */
+
+    /**
+     * Fired when an error is received.
+     *
+     * @event core-error
+     */
+
+    /**
+     * Fired whenever a response or an error is received.
+     *
+     * @event core-complete
+     */
+
+    /**
+     * The URL target of the request.
+     *
+     * @attribute url
+     * @type string
+     * @default ''
+     */
+    url: '',
+
+    /**
+     * Specifies what data to store in the `response` property, and
+     * to deliver as `event.response` in `response` events.
+     *
+     * One of:
+     *
+     *    `text`: uses `XHR.responseText`.
+     *
+     *    `xml`: uses `XHR.responseXML`.
+     *
+     *    `json`: uses `XHR.responseText` parsed as JSON.
+     *
+     *    `arraybuffer`: uses `XHR.response`.
+     *
+     *    `blob`: uses `XHR.response`.
+     *
+     *    `document`: uses `XHR.response`.
+     *
+     * @attribute handleAs
+     * @type string
+     * @default 'text'
+     */
+    handleAs: '',
+
+    /**
+     * If true, automatically performs an Ajax request when either `url` or `params` changes.
+     *
+     * @attribute auto
+     * @type boolean
+     * @default false
+     */
+    auto: false,
+
+    /**
+     * Parameters to send to the specified URL, as JSON.
+     *
+     * @attribute params
+     * @type string (JSON)
+     * @default ''
+     */
+    params: '',
+
+    /**
+     * The response for the current request, or null if it hasn't
+     * completed yet or the request resulted in error.
+     *
+     * @attribute response
+     * @type Object
+     * @default null
+     */
+    response: null,
+
+    /**
+     * The error for the current request, or null if it hasn't
+     * completed yet or the request resulted in success.
+     *
+     * @attribute error
+     * @type Object
+     * @default null
+     */
+    error: null,
+
+    /**
+     * Whether the current request is currently loading.
+     *
+     * @attribute loading
+     * @type boolean
+     * @default false
+     */
+    loading: false,
+
+    /**
+     * The progress of the current request.
+     *
+     * @attribute progress
+     * @type {loaded: number, total: number, lengthComputable: boolean}
+     * @default {}
+     */
+    progress: null,
+
+    /**
+     * The HTTP method to use such as 'GET', 'POST', 'PUT', or 'DELETE'.
+     * Default is 'GET'.
+     *
+     * @attribute method
+     * @type string
+     * @default ''
+     */
+    method: '',
+
+    /**
+     * HTTP request headers to send.
+     *
+     * Example:
+     *
+     *     <core-ajax
+     *         auto
+     *         url="http://somesite.com"
+     *         headers='{"X-Requested-With": "XMLHttpRequest"}'
+     *         handleAs="json"
+     *         on-core-response="{{handleResponse}}"></core-ajax>
+     *
+     * @attribute headers
+     * @type Object
+     * @default null
+     */
+    headers: null,
+
+    /**
+     * Optional raw body content to send when method === "POST".
+     *
+     * Example:
+     *
+     *     <core-ajax method="POST" auto url="http://somesite.com"
+     *         body='{"foo":1, "bar":2}'>
+     *     </core-ajax>
+     *
+     * @attribute body
+     * @type Object
+     * @default null
+     */
+    body: null,
+
+    /**
+     * Content type to use when sending data.
+     *
+     * @attribute contentType
+     * @type string
+     * @default 'application/x-www-form-urlencoded'
+     */
+    contentType: 'application/x-www-form-urlencoded',
+
+    /**
+     * Set the withCredentials flag on the request.
+     *
+     * @attribute withCredentials
+     * @type boolean
+     * @default false
+     */
+    withCredentials: false,
+
+    /**
+     * Additional properties to send to core-xhr.
+     *
+     * Can be set to an object containing default properties
+     * to send as arguments to the `core-xhr.request()` method
+     * which implements the low-level communication.
+     *
+     * @property xhrArgs
+     * @type Object
+     * @default null
+     */
+    xhrArgs: null,
+
+    created: function() {
+      this.progress = {};
+    },
+
+    ready: function() {
+      this.xhr = document.createElement('core-xhr');
+    },
+
+    receive: function(response, xhr) {
+      if (this.isSuccess(xhr)) {
+        this.processResponse(xhr);
+      } else {
+        this.processError(xhr);
+      }
+      this.complete(xhr);
+    },
+
+    isSuccess: function(xhr) {
+      var status = xhr.status || 0;
+      return !status || (status >= 200 && status < 300);
+    },
+
+    processResponse: function(xhr) {
+      var response = this.evalResponse(xhr);
+      if (xhr === this.activeRequest) {
+        this.response = response;
+      }
+      this.fire('core-response', {response: response, xhr: xhr});
+    },
+
+    processError: function(xhr) {
+      var response = xhr.status + ': ' + xhr.responseText;
+      if (xhr === this.activeRequest) {
+        this.error = response;
+      }
+      this.fire('core-error', {response: response, xhr: xhr});
+    },
+
+    processProgress: function(progress, xhr) {
+      if (xhr !== this.activeRequest) {
+        return;
+      }
+      // We create a proxy object here because these fields
+      // on the progress event are readonly properties, which
+      // causes problems in common use cases (e.g. binding to
+      // <paper-progress> attributes).
+      var progressProxy = {
+        lengthComputable: progress.lengthComputable,
+        loaded: progress.loaded,
+        total: progress.total
+      }
+      this.progress = progressProxy;
+    },
+
+    complete: function(xhr) {
+      if (xhr === this.activeRequest) {
+        this.loading = false;
+      }
+      this.fire('core-complete', {response: xhr.status, xhr: xhr});
+    },
+
+    evalResponse: function(xhr) {
+      return this[(this.handleAs || 'text') + 'Handler'](xhr);
+    },
+
+    xmlHandler: function(xhr) {
+      return xhr.responseXML;
+    },
+
+    textHandler: function(xhr) {
+      return xhr.responseText;
+    },
+
+    jsonHandler: function(xhr) {
+      var r = xhr.responseText;
+      try {
+        return JSON.parse(r);
+      } catch (x) {
+        console.warn('core-ajax caught an exception trying to parse response as JSON:');
+        console.warn('url:', this.url);
+        console.warn(x);
+        return r;
+      }
+    },
+
+    documentHandler: function(xhr) {
+      return xhr.response;
+    },
+
+    blobHandler: function(xhr) {
+      return xhr.response;
+    },
+
+    arraybufferHandler: function(xhr) {
+      return xhr.response;
+    },
+
+    urlChanged: function() {
+      if (!this.handleAs) {
+        var ext = String(this.url).split('.').pop();
+        switch (ext) {
+          case 'json':
+            this.handleAs = 'json';
+            break;
+        }
+      }
+      this.autoGo();
+    },
+
+    paramsChanged: function() {
+      this.autoGo();
+    },
+
+    bodyChanged: function() {
+      this.autoGo();
+    },
+
+    autoChanged: function() {
+      this.autoGo();
+    },
+
+    // TODO(sorvell): multiple side-effects could call autoGo
+    // during one micro-task, use a job to have only one action
+    // occur
+    autoGo: function() {
+      if (this.auto) {
+        this.goJob = this.job(this.goJob, this.go, 0);
+      }
+    },
+
+    /**
+     * Performs an Ajax request to the specified URL.
+     *
+     * @method go
+     */
+    go: function() {
+      var args = this.xhrArgs || {};
+      // TODO(sjmiles): we may want XHR to default to POST if body is set
+      args.body = this.body || args.body;
+      args.params = this.params || args.params;
+      if (args.params && typeof(args.params) == 'string') {
+        args.params = JSON.parse(args.params);
+      }
+      args.headers = this.headers || args.headers || {};
+      if (args.headers && typeof(args.headers) == 'string') {
+        args.headers = JSON.parse(args.headers);
+      }
+      var hasContentType = Object.keys(args.headers).some(function (header) {
+        return header.toLowerCase() === 'content-type';
+      });
+      // No Content-Type should be specified if sending `FormData`.  
+      // The UA must set the Content-Type w/ a calculated  multipart boundary ID.
+      if (args.body instanceof FormData) {
+        delete args.headers['Content-Type'];
+      } 
+      else if (!hasContentType && this.contentType) {
+        args.headers['Content-Type'] = this.contentType;
+      }
+      if (this.handleAs === 'arraybuffer' || this.handleAs === 'blob' ||
+          this.handleAs === 'document') {
+        args.responseType = this.handleAs;
+      }
+      args.withCredentials = this.withCredentials;
+      args.callback = this.receive.bind(this);
+      args.url = this.url;
+      args.method = this.method;
+
+      this.response = this.error = this.progress = null;
+      this.activeRequest = args.url && this.xhr.request(args);
+      if (this.activeRequest) {
+        this.loading = true;
+        var activeRequest = this.activeRequest;
+        // IE < 10 doesn't support progress events.
+        if ('onprogress' in activeRequest) {
+          this.activeRequest.addEventListener(
+              'progress',
+              function(progress) {
+                this.processProgress(progress, activeRequest);
+              }.bind(this), false);
+        } else {
+          this.progress = {
+            lengthComputable: false,
+          }
+        }
+      }
+      return this.activeRequest;
+    }
+
+  });
+
+</script>
+</polymer-element>
+<polymer-element name="home-automation-dimmer" attributes="value channel color" assetpath="html/components/home-automation/">
+
+  <template>
+    <style>
+      :host {
+        width: 100%;
+        height: 3em;
+      }
+
+      paper-slider {
+        width: 100%;
+      }
+
+      #dimmer::shadow #sliderKnobInner, #dimmer::shadow #sliderBar::shadow #activeProgress {
+        background-color: {{color}};
+      }
+    </style>
+
+    <paper-slider value="{{value}}" max="255" id="dimmer"></paper-slider>
+
+    <!-- For the GET requests -->
+    <core-ajax auto="" url="{{ajaxurl}}/dimmer/{{channel}}" handleas="text" response="{{value}}" loading="{{loading}}"></core-ajax>
+
+    <!-- For POST updates -->
+    <core-ajax auto="{{!loading}}" url="{{ajaxurl}}/dimmer/{{channel}}" method="POST" handleas="text" body="{{value}}"></core-ajax>
+
+  </template>
+
+  <script>
+    Polymer('home-automation-dimmer',{
+      ajaxurl: "http://" + location.host,
+      value: 0,
+      color: "blue",
+      loading: true,
+    });
+  </script>
+
+</polymer-element>
 <polymer-element name="paper-ripple" attributes="initialOpacity opacityDecayVelocity" assetpath="html/components/paper-ripple/">
 <template>
 
@@ -22621,477 +23115,37 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
   
 </script>
 </polymer-element>
+<polymer-element name="home-automation-gpio" attributes="channel label value" assetpath="html/components/home-automation/">
 
-<polymer-element name="core-xhr" hidden="" assetpath="html/components/core-ajax/">
+  <template>
+    <style>
+      :host {
+        background-color: rgb(255, 255, 255);
+      }
+    </style>
+
+    <paper-checkbox class="gpio" id="io0" checked="{{value == '1'}}" on-tap="{{gpio_toggle}}" label="{{label}}"></paper-checkbox>
+
+    <!-- For the GET requests -->
+    <core-ajax auto="" url="{{ajaxurl}}/io/{{channel}}" handleas="text" response="{{value}}" loading="{{loading}}"></core-ajax>
+
+    <!-- For POST updates -->
+    <core-ajax auto="{{!loading}}" url="{{ajaxurl}}/io/{{channel}}" method="POST" handleas="text" body="{{value}}"></core-ajax>
+
+  </template>
 
   <script>
-
-    Polymer('core-xhr', {
-
-      /**
-       * Sends a HTTP request to the server and returns the XHR object.
-       *
-       * @method request
-       * @param {Object} inOptions
-       *    @param {String} inOptions.url The url to which the request is sent.
-       *    @param {String} inOptions.method The HTTP method to use, default is GET.
-       *    @param {boolean} inOptions.sync By default, all requests are sent asynchronously. To send synchronous requests, set to true.
-       *    @param {Object} inOptions.params Data to be sent to the server.
-       *    @param {Object} inOptions.body The content for the request body for POST method.
-       *    @param {Object} inOptions.headers HTTP request headers.
-       *    @param {String} inOptions.responseType The response type. Default is 'text'.
-       *    @param {boolean} inOptions.withCredentials Whether or not to send credentials on the request. Default is false.
-       *    @param {Object} inOptions.callback Called when request is completed.
-       * @returns {Object} XHR object.
-       */
-      request: function(options) {
-        var xhr = new XMLHttpRequest();
-        var url = options.url;
-        var method = options.method || 'GET';
-        var async = !options.sync;
-        //
-        var params = this.toQueryString(options.params);
-        if (params && method == 'GET') {
-          url += (url.indexOf('?') > 0 ? '&' : '?') + params;
-        }
-        var xhrParams = this.isBodyMethod(method) ? (options.body || params) : null;
-        //
-        xhr.open(method, url, async);
-        if (options.responseType) {
-          xhr.responseType = options.responseType;
-        }
-        if (options.withCredentials) {
-          xhr.withCredentials = true;
-        }
-        this.makeReadyStateHandler(xhr, options.callback);
-        this.setRequestHeaders(xhr, options.headers);
-        xhr.send(xhrParams);
-        if (!async) {
-          xhr.onreadystatechange(xhr);
-        }
-        return xhr;
+    Polymer('home-automation-gpio',{
+      ajaxurl: "http://" + location.host,
+      value: "0",
+      loading: true,
+      gpio_toggle: function(_, __, ionode) {
+        this.value = ionode.checked ? '0' : '1';
       },
-    
-      toQueryString: function(params) {
-        var r = [];
-        for (var n in params) {
-          var v = params[n];
-          n = encodeURIComponent(n);
-          r.push(v == null ? n : (n + '=' + encodeURIComponent(v)));
-        }
-        return r.join('&');
-      },
-
-      isBodyMethod: function(method) {
-        return this.bodyMethods[(method || '').toUpperCase()];
-      },
-      
-      bodyMethods: {
-        POST: 1,
-        PUT: 1,
-        PATCH: 1,
-        DELETE: 1
-      },
-
-      makeReadyStateHandler: function(xhr, callback) {
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState == 4) {
-            callback && callback.call(null, xhr.response, xhr);
-          }
-        };
-      },
-
-      setRequestHeaders: function(xhr, headers) {
-        if (headers) {
-          for (var name in headers) {
-            xhr.setRequestHeader(name, headers[name]);
-          }
-        }
-      }
-
     });
-
   </script>
-  
-</polymer-element>
-<polymer-element name="core-ajax" hidden="" attributes="url handleAs auto params response error method headers body contentType withCredentials progress loading" assetpath="html/components/core-ajax/">
-<script>
 
-  Polymer('core-ajax', {
-    /**
-     * Fired when a response is received.
-     *
-     * @event core-response
-     */
-
-    /**
-     * Fired when an error is received.
-     *
-     * @event core-error
-     */
-
-    /**
-     * Fired whenever a response or an error is received.
-     *
-     * @event core-complete
-     */
-
-    /**
-     * The URL target of the request.
-     *
-     * @attribute url
-     * @type string
-     * @default ''
-     */
-    url: '',
-
-    /**
-     * Specifies what data to store in the `response` property, and
-     * to deliver as `event.response` in `response` events.
-     *
-     * One of:
-     *
-     *    `text`: uses `XHR.responseText`.
-     *
-     *    `xml`: uses `XHR.responseXML`.
-     *
-     *    `json`: uses `XHR.responseText` parsed as JSON.
-     *
-     *    `arraybuffer`: uses `XHR.response`.
-     *
-     *    `blob`: uses `XHR.response`.
-     *
-     *    `document`: uses `XHR.response`.
-     *
-     * @attribute handleAs
-     * @type string
-     * @default 'text'
-     */
-    handleAs: '',
-
-    /**
-     * If true, automatically performs an Ajax request when either `url` or `params` changes.
-     *
-     * @attribute auto
-     * @type boolean
-     * @default false
-     */
-    auto: false,
-
-    /**
-     * Parameters to send to the specified URL, as JSON.
-     *
-     * @attribute params
-     * @type string (JSON)
-     * @default ''
-     */
-    params: '',
-
-    /**
-     * The response for the current request, or null if it hasn't
-     * completed yet or the request resulted in error.
-     *
-     * @attribute response
-     * @type Object
-     * @default null
-     */
-    response: null,
-
-    /**
-     * The error for the current request, or null if it hasn't
-     * completed yet or the request resulted in success.
-     *
-     * @attribute error
-     * @type Object
-     * @default null
-     */
-    error: null,
-
-    /**
-     * Whether the current request is currently loading.
-     *
-     * @attribute loading
-     * @type boolean
-     * @default false
-     */
-    loading: false,
-
-    /**
-     * The progress of the current request.
-     *
-     * @attribute progress
-     * @type {loaded: number, total: number, lengthComputable: boolean}
-     * @default {}
-     */
-    progress: null,
-
-    /**
-     * The HTTP method to use such as 'GET', 'POST', 'PUT', or 'DELETE'.
-     * Default is 'GET'.
-     *
-     * @attribute method
-     * @type string
-     * @default ''
-     */
-    method: '',
-
-    /**
-     * HTTP request headers to send.
-     *
-     * Example:
-     *
-     *     <core-ajax
-     *         auto
-     *         url="http://somesite.com"
-     *         headers='{"X-Requested-With": "XMLHttpRequest"}'
-     *         handleAs="json"
-     *         on-core-response="{{handleResponse}}"></core-ajax>
-     *
-     * @attribute headers
-     * @type Object
-     * @default null
-     */
-    headers: null,
-
-    /**
-     * Optional raw body content to send when method === "POST".
-     *
-     * Example:
-     *
-     *     <core-ajax method="POST" auto url="http://somesite.com"
-     *         body='{"foo":1, "bar":2}'>
-     *     </core-ajax>
-     *
-     * @attribute body
-     * @type Object
-     * @default null
-     */
-    body: null,
-
-    /**
-     * Content type to use when sending data.
-     *
-     * @attribute contentType
-     * @type string
-     * @default 'application/x-www-form-urlencoded'
-     */
-    contentType: 'application/x-www-form-urlencoded',
-
-    /**
-     * Set the withCredentials flag on the request.
-     *
-     * @attribute withCredentials
-     * @type boolean
-     * @default false
-     */
-    withCredentials: false,
-
-    /**
-     * Additional properties to send to core-xhr.
-     *
-     * Can be set to an object containing default properties
-     * to send as arguments to the `core-xhr.request()` method
-     * which implements the low-level communication.
-     *
-     * @property xhrArgs
-     * @type Object
-     * @default null
-     */
-    xhrArgs: null,
-
-    created: function() {
-      this.progress = {};
-    },
-
-    ready: function() {
-      this.xhr = document.createElement('core-xhr');
-    },
-
-    receive: function(response, xhr) {
-      if (this.isSuccess(xhr)) {
-        this.processResponse(xhr);
-      } else {
-        this.processError(xhr);
-      }
-      this.complete(xhr);
-    },
-
-    isSuccess: function(xhr) {
-      var status = xhr.status || 0;
-      return !status || (status >= 200 && status < 300);
-    },
-
-    processResponse: function(xhr) {
-      var response = this.evalResponse(xhr);
-      if (xhr === this.activeRequest) {
-        this.response = response;
-      }
-      this.fire('core-response', {response: response, xhr: xhr});
-    },
-
-    processError: function(xhr) {
-      var response = xhr.status + ': ' + xhr.responseText;
-      if (xhr === this.activeRequest) {
-        this.error = response;
-      }
-      this.fire('core-error', {response: response, xhr: xhr});
-    },
-
-    processProgress: function(progress, xhr) {
-      if (xhr !== this.activeRequest) {
-        return;
-      }
-      // We create a proxy object here because these fields
-      // on the progress event are readonly properties, which
-      // causes problems in common use cases (e.g. binding to
-      // <paper-progress> attributes).
-      var progressProxy = {
-        lengthComputable: progress.lengthComputable,
-        loaded: progress.loaded,
-        total: progress.total
-      }
-      this.progress = progressProxy;
-    },
-
-    complete: function(xhr) {
-      if (xhr === this.activeRequest) {
-        this.loading = false;
-      }
-      this.fire('core-complete', {response: xhr.status, xhr: xhr});
-    },
-
-    evalResponse: function(xhr) {
-      return this[(this.handleAs || 'text') + 'Handler'](xhr);
-    },
-
-    xmlHandler: function(xhr) {
-      return xhr.responseXML;
-    },
-
-    textHandler: function(xhr) {
-      return xhr.responseText;
-    },
-
-    jsonHandler: function(xhr) {
-      var r = xhr.responseText;
-      try {
-        return JSON.parse(r);
-      } catch (x) {
-        console.warn('core-ajax caught an exception trying to parse response as JSON:');
-        console.warn('url:', this.url);
-        console.warn(x);
-        return r;
-      }
-    },
-
-    documentHandler: function(xhr) {
-      return xhr.response;
-    },
-
-    blobHandler: function(xhr) {
-      return xhr.response;
-    },
-
-    arraybufferHandler: function(xhr) {
-      return xhr.response;
-    },
-
-    urlChanged: function() {
-      if (!this.handleAs) {
-        var ext = String(this.url).split('.').pop();
-        switch (ext) {
-          case 'json':
-            this.handleAs = 'json';
-            break;
-        }
-      }
-      this.autoGo();
-    },
-
-    paramsChanged: function() {
-      this.autoGo();
-    },
-
-    bodyChanged: function() {
-      this.autoGo();
-    },
-
-    autoChanged: function() {
-      this.autoGo();
-    },
-
-    // TODO(sorvell): multiple side-effects could call autoGo
-    // during one micro-task, use a job to have only one action
-    // occur
-    autoGo: function() {
-      if (this.auto) {
-        this.goJob = this.job(this.goJob, this.go, 0);
-      }
-    },
-
-    /**
-     * Performs an Ajax request to the specified URL.
-     *
-     * @method go
-     */
-    go: function() {
-      var args = this.xhrArgs || {};
-      // TODO(sjmiles): we may want XHR to default to POST if body is set
-      args.body = this.body || args.body;
-      args.params = this.params || args.params;
-      if (args.params && typeof(args.params) == 'string') {
-        args.params = JSON.parse(args.params);
-      }
-      args.headers = this.headers || args.headers || {};
-      if (args.headers && typeof(args.headers) == 'string') {
-        args.headers = JSON.parse(args.headers);
-      }
-      var hasContentType = Object.keys(args.headers).some(function (header) {
-        return header.toLowerCase() === 'content-type';
-      });
-      // No Content-Type should be specified if sending `FormData`.  
-      // The UA must set the Content-Type w/ a calculated  multipart boundary ID.
-      if (args.body instanceof FormData) {
-        delete args.headers['Content-Type'];
-      } 
-      else if (!hasContentType && this.contentType) {
-        args.headers['Content-Type'] = this.contentType;
-      }
-      if (this.handleAs === 'arraybuffer' || this.handleAs === 'blob' ||
-          this.handleAs === 'document') {
-        args.responseType = this.handleAs;
-      }
-      args.withCredentials = this.withCredentials;
-      args.callback = this.receive.bind(this);
-      args.url = this.url;
-      args.method = this.method;
-
-      this.response = this.error = this.progress = null;
-      this.activeRequest = args.url && this.xhr.request(args);
-      if (this.activeRequest) {
-        this.loading = true;
-        var activeRequest = this.activeRequest;
-        // IE < 10 doesn't support progress events.
-        if ('onprogress' in activeRequest) {
-          this.activeRequest.addEventListener(
-              'progress',
-              function(progress) {
-                this.processProgress(progress, activeRequest);
-              }.bind(this), false);
-        } else {
-          this.progress = {
-            lengthComputable: false,
-          }
-        }
-      }
-      return this.activeRequest;
-    }
-
-  });
-
-</script>
-</polymer-element>
-<polymer-element name="home-automation" attributes="dimmer0 dimmer1 dimmer2 dimmer3 io0 io1 io2 ajaxurl" assetpath="html/components/home-automation/">
+</polymer-element><polymer-element name="home-automation" assetpath="html/components/home-automation/">
 
   <template>
     <style>
@@ -23103,6 +23157,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         font-size: 1.5em;
         font-family: sans-serif;
       }
+
       h1 {
         font-size: 0.5em;
         font-weight: normal;
@@ -23110,6 +23165,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         center; color: #999;
         margin: 2em 0 0 0;
       }
+
       #core_toolbar {
         right: 0px;
         left: 0px;
@@ -23118,22 +23174,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         top: 0px;
         background-color: rgb(79, 125, 201);
       }
-      .dimmer {
-        width: 100%;
-        height: 3em;
-      }
-      #dimmer0::shadow #sliderKnobInner, #dimmer0::shadow #sliderBar::shadow #activeProgress {
-        background-color: rgb(255, 215, 0);
-      }
-      #dimmer1::shadow #sliderKnobInner, #dimmer1::shadow #sliderBar::shadow #activeProgress {
-        background-color: green;
-      }
-      #dimmer2::shadow #sliderKnobInner, #dimmer2::shadow #sliderBar::shadow #activeProgress {
-        background-color: red;
-      }
-      #dimmer3::shadow #sliderKnobInner, #dimmer3::shadow #sliderBar::shadow #activeProgress {
-        background-color: navy;
-      }
+
       .card {
         width: auto;
         overflow: visible;
@@ -23144,7 +23185,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         text-align: center;
         background-color: rgb(255, 255, 255);
       }
-      .gpio {
+
+      home-automation-gpio {
         width: 32%;
         display: inline-block;
         background-color: rgb(255, 255, 255);
@@ -23158,66 +23200,31 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </core-toolbar>
 
     <core-card id="dimmers" class="card" layout="" vertical="">
-      <paper-slider value="{{dimmer0}}" max="255" id="dimmer0" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer1}}" max="255" id="dimmer1" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer2}}" max="255" id="dimmer2" class="dimmer"></paper-slider>
-      <paper-slider value="{{dimmer3}}" max="255" id="dimmer3" class="dimmer"></paper-slider>
+      <home-automation-dimmer channel="0" id="dimmer0" color="gold" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="1" id="dimmer1" color="green" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="2" id="dimmer2" color="red" value="0"></home-automation-dimmer>
+      <home-automation-dimmer channel="3" id="dimmer3" color="navy" value="0"></home-automation-dimmer>
     </core-card>
 
     <core-card id="gpios" class="card" layout="" horizontal="">
-      <paper-checkbox class="gpio" id="io0" checked="{{io0 == '1'}}" on-tap="{{gpio_toggle}}" label="Ampli"></paper-checkbox>
-      <paper-checkbox class="gpio" id="io1" checked="{{io1 == '1'}}" on-tap="{{gpio_toggle}}" label="I/O 1"></paper-checkbox>
-      <paper-checkbox class="gpio" id="io2" checked="{{io2 == '1'}}" on-tap="{{gpio_toggle}}" label="I/O 2"></paper-checkbox>
+      <home-automation-gpio channel="0" id="io0" label="Ampli" value="0"></home-automation-gpio>
+      <home-automation-gpio channel="1" id="io1" label="Aux 1" value="0"></home-automation-gpio>
+      <home-automation-gpio channel="2" id="io2" label="Aux 2" value="0"></home-automation-gpio>
     </core-card>
 
-    <!-- Dimmer GET requests -->
-    <core-ajax auto="" url="{{ajaxurl}}/pwm/0" handleas="text" response="{{dimmer0}}" loading="{{dimmer0_loading}}"></core-ajax>
-    <core-ajax auto="" url="{{ajaxurl}}/pwm/1" handleas="text" response="{{dimmer1}}" loading="{{dimmer1_loading}}"></core-ajax>
-    <core-ajax auto="" url="{{ajaxurl}}/pwm/2" handleas="text" response="{{dimmer2}}" loading="{{dimmer2_loading}}"></core-ajax>
-    <core-ajax auto="" url="{{ajaxurl}}/pwm/3" handleas="text" response="{{dimmer3}}" loading="{{dimmer3_loading}}"></core-ajax>
-
-    <!-- Dimmer POST updates -->
-    <core-ajax auto="{{!dimmer0_loading}}" url="{{ajaxurl}}/pwm/0" method="POST" handleas="text" body="{{dimmer0}}"></core-ajax>
-    <core-ajax auto="{{!dimmer1_loading}}" url="{{ajaxurl}}/pwm/1" method="POST" handleas="text" body="{{dimmer1}}"></core-ajax>
-    <core-ajax auto="{{!dimmer2_loading}}" url="{{ajaxurl}}/pwm/2" method="POST" handleas="text" body="{{dimmer2}}"></core-ajax>
-    <core-ajax auto="{{!dimmer3_loading}}" url="{{ajaxurl}}/pwm/3" method="POST" handleas="text" body="{{dimmer3}}"></core-ajax>
-
-    <!-- GPIO GET requests -->
-    <core-ajax auto="" url="{{ajaxurl}}/io/0" handleas="text" response="{{io0}}" loading="{{io0_loading}}"></core-ajax>
-    <core-ajax auto="" url="{{ajaxurl}}/io/1" handleas="text" response="{{io1}}" loading="{{io1_loading}}"></core-ajax>
-    <core-ajax auto="" url="{{ajaxurl}}/io/2" handleas="text" response="{{io2}}" loading="{{io2_loading}}"></core-ajax>
-
-    <!-- GPIO POST updates -->
-    <core-ajax auto="{{!io0_loading}}" url="{{ajaxurl}}/io/0" method="POST" handleas="text" body="{{io0}}"></core-ajax>
-    <core-ajax auto="{{!io1_loading}}" url="{{ajaxurl}}/io/1" method="POST" handleas="text" body="{{io1}}"></core-ajax>
-    <core-ajax auto="{{!io2_loading}}" url="{{ajaxurl}}/io/2" method="POST" handleas="text" body="{{io2}}"></core-ajax>
     <a href="https://www.primianotucci.com/"><h1>Primiano Tucci - www.primianotucci.com</h1></a>
   </template>
 
   <script>
     Polymer('home-automation',{
-      ajaxurl: "http://" + location.host,
-      dimmer0: "0",
-      dimmer1: "0",
-      dimmer2: "0",
-      dimmer3: "0",
-      io0: "0",
-      io1: "0",
-      io2: "0",
-      dimmer0_loading: true,
-      dimmer1_loading: true,
-      dimmer2_loading: true,
-      dimmer3_loading: true,
-      io0_loading: true,
-      io1_loading: true,
-      io2_loading: true,
-      req: false,
-      gpio_toggle: function(_, __, ionode) {
-        this[ionode.id] = ionode.checked ? '0' : '1';
-      },
       reset_all: function() {
-        this.io0 = this.io1 = this.io2 = "0";
-        this.dimmer0 = this.dimmer1 = this.dimmer2 = this.dimmer3 = "0";
+        var dimmers = this.shadowRoot.getElementsByTagName('home-automation-dimmer');
+        for (var i=0; i < dimmers.length; ++i)
+          dimmers[i].value = "0";
+
+        var gpios = this.shadowRoot.getElementsByTagName('home-automation-gpio');
+        for (var i=0; i < gpios.length; ++i)
+          gpios[i].value = "0";
       }
     });
   </script>

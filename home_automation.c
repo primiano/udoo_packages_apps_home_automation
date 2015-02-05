@@ -22,7 +22,6 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
-#include "mongoose.h"
 
 #include <fcntl.h>
 #include <stdbool.h>
@@ -35,13 +34,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "mongoose.h"
+
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define ARRAY_SIZE(x) ((sizeof x) / (sizeof *x))
 
 // Prototypes.
-static bool REST_pwm_get(const char* path, struct mg_connection *conn);
-static bool REST_pwm_post(const char* path, struct mg_connection *conn);
+static bool REST_dimmer_get(const char* path, struct mg_connection *conn);
+static bool REST_dimmer_post(const char* path, struct mg_connection *conn);
 static bool REST_gpio_get(const char* path, struct mg_connection *conn);
 static bool REST_gpio_post(const char* path, struct mg_connection *conn);
 
@@ -52,20 +53,20 @@ struct rest_endpoint_t {
   bool (*handler)(const char*, struct mg_connection*);
 };
 
-static uint8_t pwm_values[4];
+static uint8_t dimmer_values[4];
 static uint8_t io_values[3];
 static const uint8_t gpio_pins[3] = {18, 16, 17};
 static const char* tty;
 
 const struct rest_endpoint_t endpoints[] = {
-  {"/pwm/", "GET",  REST_pwm_get},
-  {"/pwm/", "POST", REST_pwm_post},
+  {"/dimmer/", "GET",  REST_dimmer_get},
+  {"/dimmer/", "POST", REST_dimmer_post},
   {"/io/",  "GET",  REST_gpio_get},
   {"/io/",  "POST", REST_gpio_post},
 };
 
 
-static void trigger_gpio() {
+static void refresh_gpios() {
   uint8_t i;
   char path[64];
   for (i = 0; i < sizeof(io_values); ++i) {
@@ -91,7 +92,7 @@ static void trigger_gpio() {
 }
 
 
-static int trigger_pwm(void) {
+static int refresh_dimmers(void) {
   uint8_t i;
   int fd = open(tty, O_RDWR | O_NOCTTY | O_NDELAY);
   if (fd < 0) {
@@ -122,9 +123,9 @@ static int trigger_pwm(void) {
     return 4;
   }
 
-  uint8_t buf[sizeof(pwm_values)];
-  for (i = 0; i < sizeof(pwm_values); ++i) {
-    const uint8_t value = 0x3F - ((pwm_values[i] >> 2) & 0x3F);
+  uint8_t buf[sizeof(dimmer_values)];
+  for (i = 0; i < sizeof(dimmer_values); ++i) {
+    const uint8_t value = 0x3F - ((dimmer_values[i] >> 2) & 0x3F);
     buf[i] = value | (i << 6);
   }
   write(fd, buf, sizeof(buf));
@@ -133,23 +134,23 @@ static int trigger_pwm(void) {
 }
 
 
-static bool REST_pwm_get(const char* path, struct mg_connection *conn) {
+static bool REST_dimmer_get(const char* path, struct mg_connection *conn) {
   const uint8_t channel = atoi(path);
-  if (channel >= sizeof(pwm_values))
+  if (channel >= sizeof(dimmer_values))
     return false;
-  mg_printf_data(conn, "%d", pwm_values[channel]);
+  mg_printf_data(conn, "%d", dimmer_values[channel]);
   return true;
 }
 
 
-static bool REST_pwm_post(const char* path, struct mg_connection *conn) {
+static bool REST_dimmer_post(const char* path, struct mg_connection *conn) {
   const uint8_t channel = atoi(path);
-  if (channel >= sizeof(pwm_values))
+  if (channel >= sizeof(dimmer_values))
     return false;
-  char val[4];
+  char val[4] = {0,0,0,0};
   strncpy(val, conn->content, MIN(conn->content_len, sizeof(val) - 1));
-  pwm_values[channel] = atoi(val);
-  trigger_pwm();
+  dimmer_values[channel] = atoi(val);
+  refresh_dimmers();
   mg_printf_data(conn, "OK\n");
   return true;
 }
@@ -170,7 +171,7 @@ static bool REST_gpio_post(const char* path, struct mg_connection *conn) {
     return false;
   io_values[channel] = (conn->content_len > 0 && conn->content[0] == '1') ? 1
                                                                           : 0;
-  trigger_gpio();
+  refresh_gpios();
   mg_printf_data(conn, "OK\n");
   return true;
 }
@@ -198,7 +199,8 @@ static int http_handler(struct mg_connection *conn, enum mg_event ev) {
   }
 }
 
-static void heartbeat() {
+
+static void pulse_heartbeat_leds() {
   static int prev_value = 0;
   static uint8_t idx = 0;
   static char pattern[] = "11100000111111000000000000000000";
@@ -215,6 +217,7 @@ static void heartbeat() {
   write(fd, value_str, strlen(value_str));
   close(fd);
 }
+
 
 int main(int argc, char** argv) {
   if (argc < 3) {
@@ -233,11 +236,11 @@ int main(int argc, char** argv) {
   int i;
   for (;;) {
     mg_poll_server(server, 60);
-    heartbeat();
+    pulse_heartbeat_leds();
     // Refresh values every ~sec to re-trigger the dimmer's watchdog.
     if (++i == 15) {
-      trigger_pwm();
-      trigger_gpio();
+      refresh_dimmers();
+      refresh_gpios();
       i = 0;
     }
   }
